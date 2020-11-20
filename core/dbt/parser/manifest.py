@@ -51,7 +51,7 @@ from dbt.parser.sources import patch_sources
 from dbt.ui import warning_tag
 from dbt.version import __version__
 
-from hologram import JsonSchemaMixin
+from dbt.dataclass_schema import JsonSchemaMixin
 
 PARTIAL_PARSE_FILE_NAME = 'partial_parse.pickle'
 PARSING_STATE = DbtProcessState('parsing')
@@ -147,6 +147,9 @@ class ManifestLoader:
         else:
             self.macro_hook = macro_hook
 
+        # results holds all of the nodes created by parsing,
+        # in dictionaries: nodes, sources, docs, macros, exposures,
+        # macro_patches, patches, source_patches, files, etc
         self.results: ParseResult = make_parse_result(
             root_project, all_projects,
         )
@@ -272,10 +275,13 @@ class ManifestLoader:
         self.macro_hook(macro_manifest)
         return macro_manifest
 
+    # This is where the main action happens
     def load(self, macro_manifest: Manifest):
+        # if partial parse is enabled, load old results
         old_results = self.read_parse_results()
         if old_results is not None:
             logger.debug('Got an acceptable cached parse result')
+        # store the macros & files from the adapter macro manifest
         self.results.macros.update(macro_manifest.macros)
         self.results.files.update(macro_manifest.files)
 

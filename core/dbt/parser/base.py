@@ -5,7 +5,7 @@ from typing import (
     List, Dict, Any, Iterable, Generic, TypeVar
 )
 
-from hologram import ValidationError
+from dbt.dataclass_schema import ValidationError
 
 from dbt import utils
 from dbt.clients.jinja import MacroGenerator
@@ -252,7 +252,7 @@ class ConfiguredParser(
         }
         dct.update(kwargs)
         try:
-            return self.parse_from_dict(dct)
+            return self.parse_from_dict(dct, validate=True)
         except ValidationError as exc:
             msg = validator_error_message(exc)
             # this is a bit silly, but build an UnparsedNode just for error
@@ -275,20 +275,24 @@ class ConfiguredParser(
     def render_with_context(
         self, parsed_node: IntermediateNode, config: ContextConfig
     ) -> None:
-        """Given the parsed node and a ContextConfig to use during parsing,
-        render the node's sql wtih macro capture enabled.
+        # Given the parsed node and a ContextConfig to use during parsing,
+        # render the node's sql wtih macro capture enabled.
+        # Note: this mutates the config object when config calls are rendered.
 
-        Note: this mutates the config object when config() calls are rendered.
-        """
         # during parsing, we don't have a connection, but we might need one, so
         # we have to acquire it.
         with get_adapter(self.root_project).connection_for(parsed_node):
             context = self._context_for(parsed_node, config)
 
+            # this goes through the process of rendering, but just throws away
+            # the rendered result. The "macro capture" is the point?
             get_rendered(
                 parsed_node.raw_sql, context, parsed_node, capture_macros=True
             )
 
+    # This is taking the original config for the node, converting it to a dict,
+    # updating the config with new config passed in, then re-creating the
+    # config from the dict in the node.
     def update_parsed_node_config(
         self, parsed_node: IntermediateNode, config_dict: Dict[str, Any]
     ) -> None:

@@ -24,9 +24,12 @@ class ManifestContext(ConfiguredContext):
     ) -> None:
         super().__init__(config)
         self.manifest = manifest
+        # this is the package of the node for which this context was built
         self.search_package = search_package
         self.macro_stack = MacroStack()
         builder = self._get_namespace_builder()
+        # this takes all the macros in the manifest and adds them
+        # to the MacroNamespaceBuilder stored in self.namespace
         self.namespace = builder.build_namespace(
             self.manifest.macros.values(),
             self._ctx,
@@ -48,6 +51,8 @@ class ManifestContext(ConfiguredContext):
 
     def to_dict(self):
         dct = super().to_dict()
+        # This moves all of the macros in the 'namespace' into top level
+        # keys in the manifest dictionary
         dct.update(self.namespace)
         return dct
 
